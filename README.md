@@ -1,6 +1,6 @@
-# 二维码生成器
+# 二维码工具
 
-一款功能完善的跨平台二维码生成桌面应用程序。
+一款功能完善的跨平台二维码生成与扫描桌面应用程序。
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
@@ -9,6 +9,7 @@
 
 ## 功能特性
 
+### 二维码生成
 - 📝 **文本二维码** - 支持任意文本内容
 - 🔗 **网址二维码** - 支持 URL 格式，自动识别协议
 - 👤 **名片二维码** - 支持 vCard 格式联系人信息
@@ -21,9 +22,13 @@
 - 📋 **历史记录** - 本地保存生成历史
 - 💾 **多格式导出** - PNG、JPG、SVG
 
-## 截图
-
-![主界面](docs/screenshot.png)
+### 二维码扫描
+- 📷 **摄像头扫描** - 实时扫描二维码
+- 🖼️ **图片识别** - 从图片中识别二维码和条形码
+- 📊 **条形码支持** - EAN-13、UPC-A、Code128 等
+- 🔍 **智能解析** - 自动解析 WiFi、名片、邮件等格式
+- 💡 **闪光灯控制** - 支持设备闪光灯开关
+- 🔄 **前后摄像头切换** - 灵活选择摄像头
 
 ## 下载安装
 
@@ -84,6 +89,7 @@ npm run build:linux
 | Pinia | 2.x | 状态管理 |
 | Vite | 5.x | 构建工具 |
 | qrcode | 1.5.x | 二维码生成核心库 |
+| jsQR | 1.4.x | 二维码识别库 |
 
 ## 项目结构
 
@@ -92,10 +98,28 @@ npm run build:linux
 │   ├── main/           # Electron 主进程
 │   ├── preload/        # 预加载脚本
 │   └── renderer/       # Vue 渲染进程
+│       ├── components/ # 公共组件
+│       ├── views/      # 页面视图
+│       ├── stores/     # 状态管理
+│       ├── utils/      # 工具函数
+│       └── types/      # 类型定义
 ├── build/              # 构建资源
 ├── dist/               # 打包输出
 └── out/                # 编译输出
 ```
+
+## 更新日志
+
+### v1.2.0
+- 新增摄像头扫描二维码功能
+- 新增图片识别二维码/条形码功能
+- 支持多种条形码格式（EAN、UPC、Code128等）
+- 优化扫描界面和动画效果
+
+### v1.0.0
+- 初始版本发布
+- 支持多种二维码类型生成
+- 支持样式定制和批量生成
 
 ## 许可证
 
@@ -111,3 +135,4 @@ npm run build:linux
 - [Vue.js](https://vuejs.org/)
 - [Element Plus](https://element-plus.org/)
 - [qrcode](https://www.npmjs.com/package/qrcode)
+- [jsQR](https://www.npmjs.com/package/jsqr)
