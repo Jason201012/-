@@ -1,0 +1,153 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.app-container {
+  height: 100%;
+}
+
+.app-container .el-container {
+  height: 100%;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0 20px;
+  height: 56px !important;
+}
+
+.app-header .logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.app-header .header-actions .el-button {
+  color: white;
+}
+
+.main-container {
+  height: calc(100% - 56px);
+}
+
+.sidebar {
+  background: #f5f7fa;
+  border-right: 1px solid #e4e7ed;
+}
+
+.sidebar-menu {
+  border-right: none;
+  background: transparent;
+  height: 100%;
+}
+
+.sidebar-menu .el-menu-item {
+  height: 50px;
+  line-height: 50px;
+}
+
+.sidebar-menu .el-menu-item.is-active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.content-main {
+  background: #fff;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.qrcode-generator {
+  display: flex;
+  gap: 30px;
+  height: 100%;
+}
+
+.generator-form {
+  flex: 1;
+  max-width: 500px;
+}
+
+.generator-preview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafc;
+  border-radius: 8px;
+  padding: 30px;
+}
+
+.qrcode-display {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.qrcode-display img {
+  max-width: 300px;
+  max-height: 300px;
+}
+
+.qrcode-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.color-picker-row {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.color-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.about-content {
+  text-align: center;
+}
+
+.about-content h3 {
+  margin-bottom: 10px;
+  color: #303133;
+}
+
+.about-content p {
+  color: #606266;
+  margin: 8px 0;
+}

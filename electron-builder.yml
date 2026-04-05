@@ -1,0 +1,35 @@
+appId: com.qrcode.generator
+productName: 二维码生成器
+directories:
+  buildResources: build
+  output: dist
+files:
+  - '!**/.git/*'
+  - '!**/.vscode/*'
+  - '!**/node_modules/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+win:
+  executableName: 二维码生成器
+  icon: build/icon.ico
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+mac:
+  icon: build/icon.icns
+  target:
+    - dmg
+linux:
+  icon: build/icons
+  target:
+    - AppImage
+    - deb
