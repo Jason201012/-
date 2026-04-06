@@ -23,45 +23,94 @@
         <el-icon><CopyDocument /></el-icon>
         复制
       </el-button>
-      <el-button @click="handleSave('png')">
-        <el-icon><Download /></el-icon>
-        保存PNG
+      <el-button :type="isFavorited ? 'warning' : 'default'" @click="handleFavorite">
+        <el-icon><Star /></el-icon>
+        {{ isFavorited ? '已收藏' : '收藏' }}
       </el-button>
-      <el-button @click="handleSave('jpg')">
-        <el-icon><Download /></el-icon>
-        保存JPG
-      </el-button>
-      <el-button @click="handleSave('svg')">
-        <el-icon><Download /></el-icon>
-        保存SVG
-      </el-button>
+      <el-dropdown @command="handleSave">
+        <el-button>
+          <el-icon><Download /></el-icon>
+          保存
+          <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="png">保存为 PNG</el-dropdown-item>
+            <el-dropdown-item command="jpg">保存为 JPG</el-dropdown-item>
+            <el-dropdown-item command="svg">保存为 SVG</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </div>
+
+    <div class="logo-section">
+      <el-divider>Logo设置</el-divider>
+      <div class="logo-controls">
+        <el-switch v-model="enableLogo" active-text="启用Logo" inactive-text="禁用" />
+        <el-upload
+          v-if="enableLogo"
+          :show-file-list="false"
+          :before-upload="handleLogoUpload"
+          accept="image/*"
+        >
+          <el-button size="small">
+            <el-icon><Upload /></el-icon>
+            选择Logo
+          </el-button>
+        </el-upload>
+        <el-slider
+          v-if="enableLogo && logoSrc"
+          v-model="logoSize"
+          :min="0.1"
+          :max="0.4"
+          :step="0.05"
+          :format-tooltip="(val: number) => `${Math.round(val * 100)}%`"
+          style="width: 150px"
+        />
+        <el-button v-if="logoSrc" size="small" type="danger" @click="clearLogo">
+          清除Logo
+        </el-button>
+      </div>
+      <div v-if="logoSrc" class="logo-preview">
+        <img :src="logoSrc" alt="Logo" />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ref, watch, onMounted } from 'vue'
+  import { ref, watch, onMounted, computed } from 'vue'
   import { ElMessage } from 'element-plus'
   import type { QRCodeData } from '../types/qrcode'
   import type { QRStyleOptions } from '../types/style'
   import { DEFAULT_STYLE_OPTIONS } from '../types/style'
   import { generateQRCode, generateQRCodeSvg } from '../utils/qrcode'
   import { generateStyledQRCodeDataUrl, generateStyledQRCodeSvg } from '../utils/qrStyler'
-  import { useHistoryStore } from '../stores'
+  import { useHistoryStore, useFavoritesStore } from '../stores'
 
   const props = defineProps<{
     qrData: QRCodeData | null
   }>()
 
   const historyStore = useHistoryStore()
+  const favoritesStore = useFavoritesStore()
   const dataUrl = ref('')
   const loading = ref(false)
   const error = ref('')
   const styleOptions = ref<QRStyleOptions>({ ...DEFAULT_STYLE_OPTIONS })
+  const enableLogo = ref(false)
+  const logoSrc = ref('')
+  const logoSize = ref(0.25)
   let lastContent = ''
+
+  const isFavorited = computed(() => {
+    if (!props.qrData) return false
+    return favoritesStore.isFavorite(props.qrData.content)
+  })
 
   onMounted(() => {
     loadStyleOptions()
+    loadLogoSettings()
     window.addEventListener('storage', handleStorageChange)
   })
 
@@ -76,9 +125,113 @@
     }
   }
 
+  function loadLogoSettings() {
+    try {
+      const stored = localStorage.getItem('qr-logo-settings')
+      if (stored) {
+        const settings = JSON.parse(stored)
+        enableLogo.value = settings.enabled || false
+        logoSrc.value = settings.src || ''
+        logoSize.value = settings.size || 0.25
+      }
+    } catch (e) {
+      console.error('加载Logo设置失败:', e)
+    }
+  }
+
+  function saveLogoSettings() {
+    localStorage.setItem(
+      'qr-logo-settings',
+      JSON.stringify({
+        enabled: enableLogo.value,
+        src: logoSrc.value,
+        size: logoSize.value
+      })
+    )
+  }
+
   function handleStorageChange(e: StorageEvent) {
     if (e.key === 'qr-current-style') {
       loadStyleOptions()
+    } else if (e.key === 'qr-logo-settings') {
+      loadLogoSettings()
+    }
+  }
+
+  function handleLogoUpload(file: File) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      logoSrc.value = e.target?.result as string
+      saveLogoSettings()
+      ElMessage.success('Logo已设置')
+      regenerateQRCode()
+    }
+    reader.readAsDataURL(file)
+    return false
+  }
+
+  function clearLogo() {
+    logoSrc.value = ''
+    enableLogo.value = false
+    saveLogoSettings()
+    ElMessage.success('Logo已清除')
+    regenerateQRCode()
+  }
+
+  async function regenerateQRCode() {
+    if (!props.qrData || !props.qrData.content) return
+    lastContent = ''
+    await generateQRCodeInternal(props.qrData)
+  }
+
+  async function generateQRCodeInternal(newData: QRCodeData) {
+    loading.value = true
+    error.value = ''
+
+    try {
+      loadStyleOptions()
+
+      const useStyled =
+        styleOptions.value.dotsStyle !== 'square' ||
+        styleOptions.value.cornersSquareStyle !== 'square' ||
+        styleOptions.value.cornersDotStyle !== 'square' ||
+        typeof styleOptions.value.dotsColor !== 'string' ||
+        (typeof styleOptions.value.backgroundOptions.color === 'string' &&
+          styleOptions.value.backgroundOptions.color !== '#ffffff')
+
+      const logoOptions =
+        enableLogo.value && logoSrc.value
+          ? {
+              src: logoSrc.value,
+              size: logoSize.value
+            }
+          : undefined
+
+      if (useStyled || logoOptions) {
+        dataUrl.value = await generateStyledQRCodeDataUrl(
+          newData.content,
+          styleOptions.value,
+          newData.options.width,
+          newData.options.errorCorrectionLevel,
+          logoOptions
+        )
+      } else {
+        dataUrl.value = await generateQRCode(newData)
+      }
+
+      lastContent = newData.content
+
+      historyStore.addHistory({
+        type: newData.type,
+        content: newData.content,
+        options: newData.options,
+        dataUrl: dataUrl.value
+      })
+    } catch (e: any) {
+      error.value = e.message || '生成失败'
+      dataUrl.value = ''
+    } finally {
+      loading.value = false
     }
   }
 
@@ -95,48 +248,15 @@
         return
       }
 
-      loading.value = true
-      error.value = ''
-
-      try {
-        loadStyleOptions()
-
-        const useStyled =
-          styleOptions.value.dotsStyle !== 'square' ||
-          styleOptions.value.cornersSquareStyle !== 'square' ||
-          styleOptions.value.cornersDotStyle !== 'square' ||
-          typeof styleOptions.value.dotsColor !== 'string' ||
-          (typeof styleOptions.value.backgroundOptions.color === 'string' &&
-            styleOptions.value.backgroundOptions.color !== '#ffffff')
-
-        if (useStyled) {
-          dataUrl.value = await generateStyledQRCodeDataUrl(
-            newData.content,
-            styleOptions.value,
-            newData.options.width,
-            newData.options.errorCorrectionLevel
-          )
-        } else {
-          dataUrl.value = await generateQRCode(newData)
-        }
-
-        lastContent = newData.content
-
-        historyStore.addHistory({
-          type: newData.type,
-          content: newData.content,
-          options: newData.options,
-          dataUrl: dataUrl.value
-        })
-      } catch (e: any) {
-        error.value = e.message || '生成失败'
-        dataUrl.value = ''
-      } finally {
-        loading.value = false
-      }
+      await generateQRCodeInternal(newData)
     },
     { immediate: true, deep: true }
   )
+
+  watch([enableLogo, logoSize], () => {
+    saveLogoSettings()
+    regenerateQRCode()
+  })
 
   async function handleCopy() {
     if (!dataUrl.value) return
@@ -146,6 +266,27 @@
       ElMessage.success('已复制到剪贴板')
     } catch (e) {
       ElMessage.error('复制失败')
+    }
+  }
+
+  function handleFavorite() {
+    if (!props.qrData) return
+
+    if (isFavorited.value) {
+      const item = favoritesStore.favorites.find((f) => f.content === props.qrData?.content)
+      if (item) {
+        favoritesStore.removeFavorite(item.id)
+        ElMessage.success('已取消收藏')
+      }
+    } else {
+      const content = props.qrData.content.substring(0, 30)
+      favoritesStore.addFavorite({
+        name: content,
+        type: props.qrData.type,
+        content: props.qrData.content,
+        options: props.qrData.options
+      })
+      ElMessage.success('已添加到收藏夹')
     }
   }
 
@@ -175,13 +316,22 @@
           styleOptions.value.cornersSquareStyle !== 'square' ||
           styleOptions.value.cornersDotStyle !== 'square'
 
+        const logoOptions =
+          enableLogo.value && logoSrc.value
+            ? {
+                src: logoSrc.value,
+                size: logoSize.value
+              }
+            : undefined
+
         let svgContent: string
-        if (useStyled) {
+        if (useStyled || logoOptions) {
           svgContent = await generateStyledQRCodeSvg(
             props.qrData.content,
             styleOptions.value,
             props.qrData.options.width,
-            props.qrData.options.errorCorrectionLevel
+            props.qrData.options.errorCorrectionLevel,
+            logoOptions
           )
         } else {
           svgContent = await generateQRCodeSvg(props.qrData)
@@ -242,5 +392,32 @@
     gap: 10px;
     flex-wrap: wrap;
     justify-content: center;
+  }
+
+  .logo-section {
+    margin-top: 20px;
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .logo-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .logo-preview {
+    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .logo-preview img {
+    max-width: 80px;
+    max-height: 80px;
+    border-radius: 4px;
+    border: 1px solid #dcdfe6;
   }
 </style>

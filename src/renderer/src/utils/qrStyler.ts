@@ -1,6 +1,11 @@
 import QRCodeStyling from 'qr-code-styling'
 import type { QRStyleOptions, GradientColor } from '../types/style'
 
+interface LogoOptions {
+  src: string
+  size: number
+}
+
 interface QRCodeStylingOptions {
   width: number
   height: number
@@ -72,7 +77,7 @@ export function createStyledQRCode(
   options: QRStyleOptions,
   size: number = 300,
   errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H' = 'M',
-  logo?: string
+  logoOptions?: LogoOptions
 ): QRCodeStyling {
   const qrOptions: QRCodeStylingOptions = {
     width: size,
@@ -98,15 +103,15 @@ export function createStyledQRCode(
     imageOptions: {
       crossOrigin: options.imageOptions.crossOrigin,
       margin: options.imageOptions.margin,
-      imageSize: options.imageOptions.imageSize
+      imageSize: logoOptions?.size || options.imageOptions.imageSize
     },
     qrOptions: {
       errorCorrectionLevel
     }
   }
 
-  if (logo) {
-    qrOptions.image = logo
+  if (logoOptions?.src) {
+    qrOptions.image = logoOptions.src
   }
 
   return new QRCodeStyling(qrOptions)
@@ -117,9 +122,9 @@ export async function generateStyledQRCodeDataUrl(
   options: QRStyleOptions,
   size: number = 300,
   errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H' = 'M',
-  logo?: string
+  logoOptions?: LogoOptions
 ): Promise<string> {
-  const qrCode = createStyledQRCode(data, options, size, errorCorrectionLevel, logo)
+  const qrCode = createStyledQRCode(data, options, size, errorCorrectionLevel, logoOptions)
   return await qrCode.getRawData('png').then((blob) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -135,9 +140,9 @@ export async function generateStyledQRCodeSvg(
   options: QRStyleOptions,
   size: number = 300,
   errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H' = 'M',
-  logo?: string
+  logoOptions?: LogoOptions
 ): Promise<string> {
-  const qrCode = createStyledQRCode(data, options, size, errorCorrectionLevel, logo)
+  const qrCode = createStyledQRCode(data, options, size, errorCorrectionLevel, logoOptions)
   const blob = await qrCode.getRawData('svg')
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
