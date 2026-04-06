@@ -170,18 +170,22 @@ export function getScanResultDescription(result: ScanResult): string {
   switch (result.type) {
     case 'url':
       return `网址: ${result.rawContent}`
-    case 'wifi':
+    case 'wifi': {
       const wifi = result.parsedData?.data as WifiParsedData
       return `WiFi: ${wifi?.ssid || '未知'}`
-    case 'vcard':
+    }
+    case 'vcard': {
       const vcard = result.parsedData?.data as VCardParsedData
       return `名片: ${vcard?.name || '未知'}`
-    case 'email':
+    }
+    case 'email': {
       const email = result.parsedData?.data as EmailParsedData
       return `邮件: ${email?.to || '未知'}`
-    case 'phone':
+    }
+    case 'phone': {
       const phone = result.parsedData?.data as PhoneParsedData
       return `电话: ${phone?.number || '未知'}`
+    }
     case 'sms':
       return `短信: ${result.rawContent.substring(0, 30)}...`
     default:

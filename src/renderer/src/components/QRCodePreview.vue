@@ -17,7 +17,7 @@
         <span>输入内容生成二维码</span>
       </div>
     </div>
-    
+
     <div v-if="dataUrl" class="qrcode-actions">
       <el-button type="primary" @click="handleCopy">
         <el-icon><CopyDocument /></el-icon>
@@ -40,141 +40,207 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import type { QRCodeData } from '../types/qrcode'
-import { generateQRCode, generateQRCodeSvg } from '../utils/qrcode'
-import { useHistoryStore } from '../stores'
+  import { ref, watch, onMounted } from 'vue'
+  import { ElMessage } from 'element-plus'
+  import type { QRCodeData } from '../types/qrcode'
+  import type { QRStyleOptions } from '../types/style'
+  import { DEFAULT_STYLE_OPTIONS } from '../types/style'
+  import { generateQRCode, generateQRCodeSvg } from '../utils/qrcode'
+  import { generateStyledQRCodeDataUrl, generateStyledQRCodeSvg } from '../utils/qrStyler'
+  import { useHistoryStore } from '../stores'
 
-const props = defineProps<{
-  qrData: QRCodeData | null
-}>()
+  const props = defineProps<{
+    qrData: QRCodeData | null
+  }>()
 
-const historyStore = useHistoryStore()
-const dataUrl = ref('')
-const loading = ref(false)
-const error = ref('')
-let lastContent = ''
+  const historyStore = useHistoryStore()
+  const dataUrl = ref('')
+  const loading = ref(false)
+  const error = ref('')
+  const styleOptions = ref<QRStyleOptions>({ ...DEFAULT_STYLE_OPTIONS })
+  let lastContent = ''
 
-watch(() => props.qrData, async (newData) => {
-  if (!newData || !newData.content) {
-    dataUrl.value = ''
-    error.value = ''
-    return
-  }
-  
-  if (newData.content === lastContent) {
-    return
-  }
-  
-  loading.value = true
-  error.value = ''
-  
-  try {
-    dataUrl.value = await generateQRCode(newData)
-    lastContent = newData.content
-    
-    historyStore.addHistory({
-      type: newData.type,
-      content: newData.content,
-      options: newData.options,
-      dataUrl: dataUrl.value
-    })
-  } catch (e: any) {
-    error.value = e.message || '生成失败'
-    dataUrl.value = ''
-  } finally {
-    loading.value = false
-  }
-}, { immediate: true, deep: true })
-
-async function handleCopy() {
-  if (!dataUrl.value) return
-  
-  try {
-    await window.electronAPI.copyImageToClipboard(dataUrl.value)
-    ElMessage.success('已复制到剪贴板')
-  } catch (e) {
-    ElMessage.error('复制失败')
-  }
-}
-
-async function handleSave(format: 'png' | 'jpg' | 'svg') {
-  if (!props.qrData) return
-  
-  const filters = format === 'svg' 
-    ? [{ name: 'SVG图片', extensions: ['svg'] }]
-    : format === 'jpg'
-      ? [{ name: 'JPEG图片', extensions: ['jpg', 'jpeg'] }]
-      : [{ name: 'PNG图片', extensions: ['png'] }]
-  
-  const ext = format === 'svg' ? 'svg' : format === 'jpg' ? 'jpg' : 'png'
-  
-  const result = await window.electronAPI.saveFile({
-    defaultName: `qrcode.${ext}`,
-    filters
+  onMounted(() => {
+    loadStyleOptions()
+    window.addEventListener('storage', handleStorageChange)
   })
-  
-  if (result.canceled || !result.filePath) return
-  
-  try {
-    if (format === 'svg') {
-      const svgContent = await generateQRCodeSvg(props.qrData)
-      await window.electronAPI.saveSvgToFile(result.filePath, svgContent)
-    } else {
-      const base64 = dataUrl.value.split(',')[1]
-      await window.electronAPI.saveToFile(result.filePath, base64)
+
+  function loadStyleOptions() {
+    try {
+      const stored = localStorage.getItem('qr-current-style')
+      if (stored) {
+        styleOptions.value = { ...DEFAULT_STYLE_OPTIONS, ...JSON.parse(stored) }
+      }
+    } catch (e) {
+      console.error('加载样式设置失败:', e)
     }
-    ElMessage.success('保存成功')
-  } catch (e) {
-    ElMessage.error('保存失败')
   }
-}
+
+  function handleStorageChange(e: StorageEvent) {
+    if (e.key === 'qr-current-style') {
+      loadStyleOptions()
+    }
+  }
+
+  watch(
+    () => props.qrData,
+    async (newData) => {
+      if (!newData || !newData.content) {
+        dataUrl.value = ''
+        error.value = ''
+        return
+      }
+
+      if (newData.content === lastContent) {
+        return
+      }
+
+      loading.value = true
+      error.value = ''
+
+      try {
+        loadStyleOptions()
+
+        const useStyled =
+          styleOptions.value.dotsStyle !== 'square' ||
+          styleOptions.value.cornersSquareStyle !== 'square' ||
+          styleOptions.value.cornersDotStyle !== 'square' ||
+          typeof styleOptions.value.dotsColor !== 'string' ||
+          (typeof styleOptions.value.backgroundOptions.color === 'string' &&
+            styleOptions.value.backgroundOptions.color !== '#ffffff')
+
+        if (useStyled) {
+          dataUrl.value = await generateStyledQRCodeDataUrl(
+            newData.content,
+            styleOptions.value,
+            newData.options.width,
+            newData.options.errorCorrectionLevel
+          )
+        } else {
+          dataUrl.value = await generateQRCode(newData)
+        }
+
+        lastContent = newData.content
+
+        historyStore.addHistory({
+          type: newData.type,
+          content: newData.content,
+          options: newData.options,
+          dataUrl: dataUrl.value
+        })
+      } catch (e: any) {
+        error.value = e.message || '生成失败'
+        dataUrl.value = ''
+      } finally {
+        loading.value = false
+      }
+    },
+    { immediate: true, deep: true }
+  )
+
+  async function handleCopy() {
+    if (!dataUrl.value) return
+
+    try {
+      await window.electronAPI.copyImageToClipboard(dataUrl.value)
+      ElMessage.success('已复制到剪贴板')
+    } catch (e) {
+      ElMessage.error('复制失败')
+    }
+  }
+
+  async function handleSave(format: 'png' | 'jpg' | 'svg') {
+    if (!props.qrData) return
+
+    const filters =
+      format === 'svg'
+        ? [{ name: 'SVG图片', extensions: ['svg'] }]
+        : format === 'jpg'
+          ? [{ name: 'JPEG图片', extensions: ['jpg', 'jpeg'] }]
+          : [{ name: 'PNG图片', extensions: ['png'] }]
+
+    const ext = format === 'svg' ? 'svg' : format === 'jpg' ? 'jpg' : 'png'
+
+    const result = await window.electronAPI.saveFile({
+      defaultName: `qrcode.${ext}`,
+      filters
+    })
+
+    if (result.canceled || !result.filePath) return
+
+    try {
+      if (format === 'svg') {
+        const useStyled =
+          styleOptions.value.dotsStyle !== 'square' ||
+          styleOptions.value.cornersSquareStyle !== 'square' ||
+          styleOptions.value.cornersDotStyle !== 'square'
+
+        let svgContent: string
+        if (useStyled) {
+          svgContent = await generateStyledQRCodeSvg(
+            props.qrData.content,
+            styleOptions.value,
+            props.qrData.options.width,
+            props.qrData.options.errorCorrectionLevel
+          )
+        } else {
+          svgContent = await generateQRCodeSvg(props.qrData)
+        }
+        await window.electronAPI.saveSvgToFile(result.filePath, svgContent)
+      } else {
+        const base64 = dataUrl.value.split(',')[1]
+        await window.electronAPI.saveToFile(result.filePath, base64)
+      }
+      ElMessage.success('保存成功')
+    } catch (e) {
+      ElMessage.error('保存失败')
+    }
+  }
 </script>
 
 <style scoped>
-.qrcode-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+  .qrcode-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 
-.qrcode-display {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  min-width: 340px;
-  min-height: 340px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+  .qrcode-display {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    min-width: 340px;
+    min-height: 340px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-.loading-placeholder,
-.error-placeholder,
-.empty-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  color: #909399;
-}
+  .loading-placeholder,
+  .error-placeholder,
+  .empty-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: #909399;
+  }
 
-.error-placeholder {
-  color: #f56c6c;
-}
+  .error-placeholder {
+    color: #f56c6c;
+  }
 
-.qrcode-image img {
-  max-width: 300px;
-  max-height: 300px;
-}
+  .qrcode-image img {
+    max-width: 300px;
+    max-height: 300px;
+  }
 
-.qrcode-actions {
-  margin-top: 20px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
+  .qrcode-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 </style>

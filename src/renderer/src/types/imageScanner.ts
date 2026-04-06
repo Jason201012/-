@@ -1,4 +1,4 @@
-export type BarcodeFormat = 
+export type BarcodeFormat =
   | 'qr_code'
   | 'ean_13'
   | 'ean_8'

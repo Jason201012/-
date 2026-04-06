@@ -1,4 +1,12 @@
-export type ScanResultType = 'text' | 'url' | 'vcard' | 'wifi' | 'email' | 'phone' | 'sms' | 'unknown'
+export type ScanResultType =
+  | 'text'
+  | 'url'
+  | 'vcard'
+  | 'wifi'
+  | 'email'
+  | 'phone'
+  | 'sms'
+  | 'unknown'
 
 export interface ScanResult {
   rawContent: string

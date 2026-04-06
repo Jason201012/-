@@ -3,7 +3,7 @@ import type { ImageScanResult, BarcodeFormat, ImageScanOptions } from '../types/
 import { DEFAULT_IMAGE_SCAN_OPTIONS, BARCODE_FORMAT_NAMES } from '../types/imageScanner'
 import { parseScanContent } from './scanner'
 
-type BarcodeDetectorFormat = 
+type BarcodeDetectorFormat =
   | 'aztec'
   | 'code_128'
   | 'code_39'
@@ -41,19 +41,19 @@ declare global {
 
 function mapFormat(format: BarcodeDetectorFormat): BarcodeFormat {
   const formatMap: Record<string, BarcodeFormat> = {
-    'qr_code': 'qr_code',
-    'ean_13': 'ean_13',
-    'ean_8': 'ean_8',
-    'upc_a': 'upc_a',
-    'upc_e': 'upc_e',
-    'code_128': 'code_128',
-    'code_39': 'code_39',
-    'code_93': 'code_93',
-    'codabar': 'codabar',
-    'itf': 'itf',
-    'data_matrix': 'data_matrix',
-    'pdf417': 'pdf417',
-    'aztec': 'aztec'
+    qr_code: 'qr_code',
+    ean_13: 'ean_13',
+    ean_8: 'ean_8',
+    upc_a: 'upc_a',
+    upc_e: 'upc_e',
+    code_128: 'code_128',
+    code_39: 'code_39',
+    code_93: 'code_93',
+    codabar: 'codabar',
+    itf: 'itf',
+    data_matrix: 'data_matrix',
+    pdf417: 'pdf417',
+    aztec: 'aztec'
   }
   return formatMap[format] || 'qr_code'
 }
@@ -75,7 +75,7 @@ export async function scanImageFromUrl(
   options: Partial<ImageScanOptions> = {}
 ): Promise<ImageScanResult | null> {
   const opts = { ...DEFAULT_IMAGE_SCAN_OPTIONS, ...options }
-  
+
   try {
     const response = await fetch(imageUrl)
     const blob = await response.blob()
@@ -91,7 +91,7 @@ export async function scanImageFromBlob(
   options: Partial<ImageScanOptions> = {}
 ): Promise<ImageScanResult | null> {
   const opts = { ...DEFAULT_IMAGE_SCAN_OPTIONS, ...options }
-  
+
   try {
     const imageBitmap = await createImageBitmap(blob)
     return scanImageFromBitmap(imageBitmap, opts)
@@ -106,21 +106,21 @@ export async function scanImageFromBitmap(
   options: Partial<ImageScanOptions> = {}
 ): Promise<ImageScanResult | null> {
   const opts = { ...DEFAULT_IMAGE_SCAN_OPTIONS, ...options }
-  
+
   const supported = await isBarcodeDetectorSupported()
-  
+
   if (supported) {
     const result = await scanWithBarcodeDetector(imageBitmap, opts)
     if (result) return result
   }
-  
+
   const result = await scanWithJsQR(imageBitmap, opts)
   if (result) return result
-  
+
   if (opts.tryHarder) {
     return await scanWithPreprocessing(imageBitmap, opts)
   }
-  
+
   return null
 }
 
@@ -129,16 +129,16 @@ async function scanWithBarcodeDetector(
   options: ImageScanOptions
 ): Promise<ImageScanResult | null> {
   if (!window.BarcodeDetector) return null
-  
+
   try {
     const formats = options.formats as BarcodeDetectorFormat[]
     const detector = new window.BarcodeDetector({ formats })
     const results = await detector.detect(imageBitmap)
-    
+
     if (results && results.length > 0) {
       const barcode = results[0]
       const scanResult = parseScanContent(barcode.rawValue)
-      
+
       return {
         rawContent: barcode.rawValue,
         format: mapFormat(barcode.format),
@@ -157,31 +157,31 @@ async function scanWithBarcodeDetector(
   } catch (error) {
     console.error('BarcodeDetector 扫描失败:', error)
   }
-  
+
   return null
 }
 
 async function scanWithJsQR(
   imageBitmap: ImageBitmap,
-  options: ImageScanOptions
+  _options: ImageScanOptions
 ): Promise<ImageScanResult | null> {
   try {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
-    
+
     canvas.width = imageBitmap.width
     canvas.height = imageBitmap.height
     ctx.drawImage(imageBitmap, 0, 0)
-    
+
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
       inversionAttempts: 'dontInvert'
     })
-    
+
     if (code) {
       const scanResult = parseScanContent(code.data)
-      
+
       return {
         rawContent: code.data,
         format: 'qr_code',
@@ -200,7 +200,7 @@ async function scanWithJsQR(
   } catch (error) {
     console.error('jsQR 扫描失败:', error)
   }
-  
+
   return null
 }
 
@@ -214,7 +214,7 @@ async function scanWithPreprocessing(
     (img: ImageBitmap) => resizeImage(img, 2),
     (img: ImageBitmap) => binarize(img)
   ]
-  
+
   for (const method of preprocessingMethods) {
     try {
       const processed = await method(imageBitmap)
@@ -227,7 +227,7 @@ async function scanWithPreprocessing(
       continue
     }
   }
-  
+
   return null
 }
 
@@ -235,21 +235,21 @@ async function enhanceContrast(imageBitmap: ImageBitmap): Promise<ImageBitmap> {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   if (!ctx) return imageBitmap
-  
+
   canvas.width = imageBitmap.width
   canvas.height = imageBitmap.height
   ctx.drawImage(imageBitmap, 0, 0)
-  
+
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const data = imageData.data
-  
+
   const factor = 1.5
   for (let i = 0; i < data.length; i += 4) {
     data[i] = Math.min(255, Math.max(0, factor * (data[i] - 128) + 128))
     data[i + 1] = Math.min(255, Math.max(0, factor * (data[i + 1] - 128) + 128))
     data[i + 2] = Math.min(255, Math.max(0, factor * (data[i + 2] - 128) + 128))
   }
-  
+
   ctx.putImageData(imageData, 0, 0)
   return await createImageBitmap(canvas)
 }
@@ -258,21 +258,21 @@ async function convertToGrayscale(imageBitmap: ImageBitmap): Promise<ImageBitmap
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   if (!ctx) return imageBitmap
-  
+
   canvas.width = imageBitmap.width
   canvas.height = imageBitmap.height
   ctx.drawImage(imageBitmap, 0, 0)
-  
+
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const data = imageData.data
-  
+
   for (let i = 0; i < data.length; i += 4) {
     const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
     data[i] = gray
     data[i + 1] = gray
     data[i + 2] = gray
   }
-  
+
   ctx.putImageData(imageData, 0, 0)
   return await createImageBitmap(canvas)
 }
@@ -281,13 +281,13 @@ async function resizeImage(imageBitmap: ImageBitmap, scale: number): Promise<Ima
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   if (!ctx) return imageBitmap
-  
+
   canvas.width = imageBitmap.width * scale
   canvas.height = imageBitmap.height * scale
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height)
-  
+
   return await createImageBitmap(canvas)
 }
 
@@ -295,14 +295,14 @@ async function binarize(imageBitmap: ImageBitmap): Promise<ImageBitmap> {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   if (!ctx) return imageBitmap
-  
+
   canvas.width = imageBitmap.width
   canvas.height = imageBitmap.height
   ctx.drawImage(imageBitmap, 0, 0)
-  
+
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const data = imageData.data
-  
+
   for (let i = 0; i < data.length; i += 4) {
     const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
     const binary = gray > 128 ? 255 : 0
@@ -310,7 +310,7 @@ async function binarize(imageBitmap: ImageBitmap): Promise<ImageBitmap> {
     data[i + 1] = binary
     data[i + 2] = binary
   }
-  
+
   ctx.putImageData(imageData, 0, 0)
   return await createImageBitmap(canvas)
 }
@@ -321,9 +321,15 @@ export function getBarcodeFormatName(format: BarcodeFormat): string {
 
 export function isBarcode(format: BarcodeFormat): boolean {
   const barcodeFormats: BarcodeFormat[] = [
-    'ean_13', 'ean_8', 'upc_a', 'upc_e', 
-    'code_128', 'code_39', 'code_93', 
-    'codabar', 'itf'
+    'ean_13',
+    'ean_8',
+    'upc_a',
+    'upc_e',
+    'code_128',
+    'code_39',
+    'code_93',
+    'codabar',
+    'itf'
   ]
   return barcodeFormats.includes(format)
 }

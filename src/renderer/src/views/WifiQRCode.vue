@@ -34,13 +34,10 @@
           style="margin-top: 10px"
         />
       </div>
-      
-      <OptionsPanel
-        v-model="options"
-        @update:logo="handleLogoUpdate"
-      />
+
+      <OptionsPanel v-model="options" @update:logo="handleLogoUpdate" />
     </div>
-    
+
     <div class="generator-preview">
       <QRCodePreview :qr-data="qrData" />
     </div>
@@ -48,35 +45,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import QRCodePreview from '../components/QRCodePreview.vue'
-import OptionsPanel from '../components/OptionsPanel.vue'
-import type { QRCodeData, QRCodeOptions, WifiData } from '../types/qrcode'
-import { DEFAULT_OPTIONS } from '../types/qrcode'
-import { formatWifi } from '../utils/qrcode'
+  import { ref, computed } from 'vue'
+  import QRCodePreview from '../components/QRCodePreview.vue'
+  import OptionsPanel from '../components/OptionsPanel.vue'
+  import type { QRCodeData, QRCodeOptions, WifiData } from '../types/qrcode'
+  import { DEFAULT_OPTIONS } from '../types/qrcode'
+  import { formatWifi } from '../utils/qrcode'
 
-const wifi = ref<WifiData>({
-  ssid: '',
-  password: '',
-  encryption: 'WPA',
-  hidden: false
-})
+  const wifi = ref<WifiData>({
+    ssid: '',
+    password: '',
+    encryption: 'WPA',
+    hidden: false
+  })
 
-const options = ref<QRCodeOptions>({ ...DEFAULT_OPTIONS })
-const logo = ref<{ src: string; size: number } | undefined>()
+  const options = ref<QRCodeOptions>({ ...DEFAULT_OPTIONS })
+  const logo = ref<{ src: string; size: number } | undefined>()
 
-const qrData = computed<QRCodeData | null>(() => {
-  if (!wifi.value.ssid.trim()) return null
-  
-  return {
-    type: 'wifi',
-    content: formatWifi(wifi.value),
-    options: options.value,
-    logo: logo.value
+  const qrData = computed<QRCodeData | null>(() => {
+    if (!wifi.value.ssid.trim()) return null
+
+    return {
+      type: 'wifi',
+      content: formatWifi(wifi.value),
+      options: options.value,
+      logo: logo.value
+    }
+  })
+
+  function handleLogoUpdate(value: { src: string; size: number } | undefined) {
+    logo.value = value
   }
-})
-
-function handleLogoUpdate(value: { src: string; size: number } | undefined) {
-  logo.value = value
-}
 </script>
